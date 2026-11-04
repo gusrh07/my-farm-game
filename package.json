@@ -1,0 +1,14 @@
+{
+  "name": "my-farm-game",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/world.test.mjs tests/farming.test.mjs tests/state.test.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": { "phaser": "^3.90.0" },
+  "devDependencies": { "typescript": "~5.7.3", "vite": "^6.4.1" }
+}

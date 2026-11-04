@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.local
+assets-source/
+release/
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+*.log

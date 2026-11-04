@@ -1,0 +1,346 @@
+{
+  "width": 96,
+  "height": 64,
+  "tags": [
+    {
+      "from": 0,
+      "to": 3,
+      "direction": 0,
+      "name": "idle-s",
+      "frames": [
+        {
+          "frame": 0,
+          "duration": 200
+        },
+        {
+          "frame": 1,
+          "duration": 200
+        },
+        {
+          "frame": 2,
+          "duration": 200
+        },
+        {
+          "frame": 3,
+          "duration": 200
+        }
+      ]
+    },
+    {
+      "from": 4,
+      "to": 7,
+      "direction": 0,
+      "name": "idle-se",
+      "frames": [
+        {
+          "frame": 4,
+          "duration": 200
+        },
+        {
+          "frame": 5,
+          "duration": 200
+        },
+        {
+          "frame": 6,
+          "duration": 200
+        },
+        {
+          "frame": 7,
+          "duration": 200
+        }
+      ]
+    },
+    {
+      "from": 8,
+      "to": 11,
+      "direction": 0,
+      "name": "idle-ne",
+      "frames": [
+        {
+          "frame": 8,
+          "duration": 200
+        },
+        {
+          "frame": 9,
+          "duration": 200
+        },
+        {
+          "frame": 10,
+          "duration": 200
+        },
+        {
+          "frame": 11,
+          "duration": 200
+        }
+      ]
+    },
+    {
+      "from": 12,
+      "to": 15,
+      "direction": 0,
+      "name": "idle-n",
+      "frames": [
+        {
+          "frame": 12,
+          "duration": 200
+        },
+        {
+          "frame": 13,
+          "duration": 200
+        },
+        {
+          "frame": 14,
+          "duration": 200
+        },
+        {
+          "frame": 15,
+          "duration": 200
+        }
+      ]
+    },
+    {
+      "from": 27,
+      "to": 34,
+      "direction": 0,
+      "name": "walk-s",
+      "frames": [
+        {
+          "frame": 16,
+          "duration": 100
+        },
+        {
+          "frame": 17,
+          "duration": 100
+        },
+        {
+          "frame": 18,
+          "duration": 100
+        },
+        {
+          "frame": 19,
+          "duration": 100
+        },
+        {
+          "frame": 20,
+          "duration": 100
+        },
+        {
+          "frame": 21,
+          "duration": 100
+        },
+        {
+          "frame": 22,
+          "duration": 100
+        },
+        {
+          "frame": 23,
+          "duration": 100
+        }
+      ]
+    },
+    {
+      "from": 35,
+      "to": 42,
+      "direction": 0,
+      "name": "walk-se",
+      "frames": [
+        {
+          "frame": 24,
+          "duration": 100
+        },
+        {
+          "frame": 25,
+          "duration": 100
+        },
+        {
+          "frame": 26,
+          "duration": 100
+        },
+        {
+          "frame": 27,
+          "duration": 100
+        },
+        {
+          "frame": 28,
+          "duration": 100
+        },
+        {
+          "frame": 29,
+          "duration": 100
+        },
+        {
+          "frame": 30,
+          "duration": 100
+        },
+        {
+          "frame": 31,
+          "duration": 100
+        }
+      ]
+    },
+    {
+      "from": 43,
+      "to": 50,
+      "direction": 0,
+      "name": "walk-ne",
+      "frames": [
+        {
+          "frame": 32,
+          "duration": 100
+        },
+        {
+          "frame": 33,
+          "duration": 100
+        },
+        {
+          "frame": 34,
+          "duration": 100
+        },
+        {
+          "frame": 35,
+          "duration": 100
+        },
+        {
+          "frame": 36,
+          "duration": 100
+        },
+        {
+          "frame": 37,
+          "duration": 100
+        },
+        {
+          "frame": 38,
+          "duration": 100
+        },
+        {
+          "frame": 39,
+          "duration": 100
+        }
+      ]
+    },
+    {
+      "from": 51,
+      "to": 58,
+      "direction": 0,
+      "name": "walk-n",
+      "frames": [
+        {
+          "frame": 40,
+          "duration": 100
+        },
+        {
+          "frame": 41,
+          "duration": 100
+        },
+        {
+          "frame": 42,
+          "duration": 100
+        },
+        {
+          "frame": 43,
+          "duration": 100
+        },
+        {
+          "frame": 44,
+          "duration": 100
+        },
+        {
+          "frame": 45,
+          "duration": 100
+        },
+        {
+          "frame": 46,
+          "duration": 100
+        },
+        {
+          "frame": 47,
+          "duration": 100
+        }
+      ]
+    },
+    {
+      "from": 99,
+      "to": 106,
+      "direction": 0,
+      "name": "walk",
+      "frames": [
+        {
+          "frame": 48,
+          "duration": 75
+        },
+        {
+          "frame": 49,
+          "duration": 75
+        },
+        {
+          "frame": 50,
+          "duration": 75
+        },
+        {
+          "frame": 51,
+          "duration": 75
+        },
+        {
+          "frame": 52,
+          "duration": 75
+        },
+        {
+          "frame": 53,
+          "duration": 75
+        },
+        {
+          "frame": 54,
+          "duration": 75
+        },
+        {
+          "frame": 55,
+          "duration": 75
+        }
+      ]
+    },
+    {
+      "from": 115,
+      "to": 123,
+      "direction": 0,
+      "name": "idle",
+      "frames": [
+        {
+          "frame": 56,
+          "duration": 75
+        },
+        {
+          "frame": 57,
+          "duration": 75
+        },
+        {
+          "frame": 58,
+          "duration": 75
+        },
+        {
+          "frame": 59,
+          "duration": 75
+        },
+        {
+          "frame": 60,
+          "duration": 75
+        },
+        {
+          "frame": 61,
+          "duration": 75
+        },
+        {
+          "frame": 62,
+          "duration": 75
+        },
+        {
+          "frame": 63,
+          "duration": 75
+        },
+        {
+          "frame": 64,
+          "duration": 75
+        }
+      ]
+    }
+  ]
+}

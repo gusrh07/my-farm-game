@@ -1,0 +1,18 @@
+﻿Sunnyside World — Daniel Diggle
+Source: https://danieldiggle.itch.io/sunnyside
+User-supplied pack: Sunnyside_World_ASSET_PACK_V2.1.zip
+Character source: sunnyside_world_chatacter_anim_human_v1.0.aseprite
+Used as game assets, not an asset pack for redistribution.
+Character PNG exported locally by scripts/export-character.mjs.
+Temporary visual aliases: turnip -> radish, corn -> wheat.
+Game crop IDs and rules remain unchanged.
+
+License review: 2026-11-04
+Official page currently labels the terms NEW LICENCE: V1.
+Free and commercial project use and modifications are allowed.
+Credit is optional and appreciated. This game credits Daniel Diggle.
+Tutorial/course redistribution is allowed with a link to the official page.
+Repackaging and reselling the assets (including NFTs) is prohibited.
+Using the assets to train AI is prohibited.
+The official page is authoritative; this text is a summary, not a new license.
+Audio: locally synthesized by src/audio.ts; no third-party recordings used.
