@@ -98,3 +98,18 @@ E로 상점을 열고 ←→로 구매/판매, ↑↓로 항목을 선택하고 
 순무는 팩의 radish, 옥수수는 wheat 이미지를 임시로 사용합니다. 작물 이름·성장·가격은 기존 그대로입니다.
 출처: https://danieldiggle.itch.io/sunnyside — Daniel Diggle.
 원본 ZIP과 Aseprite 파일은 `assets-source/`에 보존합니다.
+
+## 맵별 상태 구조 (저장 버전 2)
+
+현재 플레이 가능한 맵은 `farm` 하나입니다. `GameState.maps[mapId]`가 밭·장식·건물·상자를 보관하고,
+`currentMap`과 `map` 접근자가 현재 맵을 가리킵니다. 기존 `field/props/buildings/chests` 접근자는
+현재 맵으로 연결됩니다. 지형·포털·맵 전환 기능은 이번 단계에 추가하지 않았습니다.
+
+저장 키는 기존 `my-farm-game:save:v1`을 유지하지만 JSON의 `version`은 2입니다.
+옛 version 1의 평면 데이터를 `maps.farm`으로 이관하며, 건물이 없는 옛 저장에는 초기 집을 사용합니다.
+모든 맵의 검증이 끝나기 전에는 현재 게임 상태를 변경하지 않습니다.
+
+실제 세이브 백업은 게임을 실행한 원래 주소의 개발자 도구 → Application → Local Storage에서
+`my-farm-game:save:v1` 값을 별도 파일에 복사하세요. localhost·127.0.0.1·포트·itch.io는 저장 공간이
+다를 수 있습니다. `tests/fixtures/legacy-save-v1.json`은 호환성 검증용 샘플이며 사용자 백업이 아닙니다.
+새 형식으로 저장한 파일은 예전 게임 버전에서 읽을 수 없으므로, 되돌릴 때는 옛 세이브 백업도 사용하세요.

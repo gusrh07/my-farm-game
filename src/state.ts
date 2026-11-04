@@ -1,8 +1,8 @@
 import { FarmField } from './farming';
 import { CROPS } from './crops';
 import { tileAt, SPAWN, TILE_SIZE, PLAYER_SIZE, type Point } from './world';
-import { INITIAL_BUILDINGS, isBuildingTile } from './buildings';
-import { createInitialProps, isPropTile, loadProps, findPropAt, PROP_DEFS, advancePropsOneDay, isFree } from './props';
+import { INITIAL_BUILDINGS, BUILDING_DEFS, type BuildingInstance, isBuildingTile } from './buildings';
+import { type PropInstance, createInitialProps, isPropTile, loadProps, findPropAt, PROP_DEFS, advancePropsOneDay, isFree } from './props';
 import { parseInventory } from './items';
 import { CHEST_DEFS, chestAt, type ChestInstance } from './chests';
 
@@ -20,6 +20,18 @@ export const RAIN_CHANCE = 0.2;
 
 export type Inventory = Record<string, number>;
 
+export interface MapState {
+  field: FarmField;
+  buildings: BuildingInstance[];
+  props: PropInstance[];
+  chests: ChestInstance[];
+}
+
+function createFarm(): MapState {
+  const buildings = INITIAL_BUILDINGS.map(b => ({ ...b }));
+  return { field: new FarmField(), buildings, props: createInitialProps(buildings), chests: [] };
+}
+
 export class GameState {
   day = 1;
   minutes = DAY_START;
@@ -28,10 +40,17 @@ export class GameState {
   readonly maxEnergy = 100;
   energy = this.maxEnergy;
   inventory: Inventory = { 'seed:turnip': 5 };
-  field = new FarmField();
-  buildings = INITIAL_BUILDINGS.map(building => ({ ...building }));
-  props = createInitialProps(this.buildings);
-  chests: ChestInstance[] = [];
+  currentMap = 'farm';
+  maps: Record<string, MapState> = { farm: createFarm() };
+  get map(): MapState { return this.maps[this.currentMap]; }
+  get field() { return this.map.field; }
+  set field(value: FarmField) { this.map.field = value; }
+  get buildings() { return this.map.buildings; }
+  set buildings(value: BuildingInstance[]) { this.map.buildings = value; }
+  get props() { return this.map.props; }
+  set props(value: PropInstance[]) { this.map.props = value; }
+  get chests() { return this.map.chests; }
+  set chests(value: ChestInstance[]) { this.map.chests = value; }
   playerPosition: Point = { ...SPAWN }; // Runtime-only exclusion area for tree growth.
   selectedSeed = 'turnip';
   weather: Weather = 'sunny';
@@ -115,20 +134,21 @@ export class GameState {
 
   serialize(): string {
     return JSON.stringify({
-      version: 1, day: this.day, minutes: this.minutes,
+      version: 2, day: this.day, minutes: this.minutes,
       energy: this.energy,
       weather: this.weather, tomorrowWeather: this.tomorrowWeather,
       gold: this.gold, inventory: this.inventory, selectedSeed: this.selectedSeed,
-      field: this.field.toJSON(),
-      props: this.props,
-      chests: this.chests,
+      currentMap: this.currentMap,
+      maps: Object.fromEntries(Object.entries(this.maps).map(([id, map]) => [id, {
+        field: map.field.toJSON(), buildings: map.buildings, props: map.props, chests: map.chests,
+      }])),
     });
   }
 
   // 검증을 모두 마친 후 반영하여 실패 시 현재 게임을 보존합니다.
   load(serialized: string): void {
     const data = JSON.parse(serialized);
-    if (!data || data.version !== 1) throw new Error('지원하지 않는 저장 형식');
+    if (!data || (data.version !== 1 && data.version !== 2)) throw new Error('지원하지 않는 저장 형식');
     const minutes = data.minutes ?? DAY_START; // 기존 60초 하루 저장은 06:00부터 재개
     const energy = data.energy === undefined ? this.maxEnergy : data.energy;
     const weather = data.weather === undefined ? 'sunny' : data.weather;
@@ -141,34 +161,57 @@ export class GameState {
       || minutes % 10 !== 0) throw new Error('날짜·돈·시간 오류');
     if (typeof data.selectedSeed !== 'string' || !Object.hasOwn(CROPS, data.selectedSeed)) throw new Error('선택 씨앗 오류');
     const inventory = parseInventory(data.inventory);
-    const field = new FarmField();
-    field.load(data.field);
-    for (const [key] of field.entries()) {
-      const [col, row] = key.split(',').map(Number);
-      if (tileAt(col, row) !== 0) throw new Error('경작할 수 없는 좌표');
-      if (isBuildingTile(this.buildings, col, row)) throw new Error('저장된 밭과 집 위치가 겹칩니다');
+    const rawMaps = data.maps === undefined && data.version === 1 ? { farm: data } : data.maps;
+    if (!rawMaps || typeof rawMaps !== 'object' || Array.isArray(rawMaps)
+      || !Object.hasOwn(rawMaps, 'farm')) throw new Error('맵 목록 오류');
+    const currentMap = data.currentMap ?? 'farm';
+    if (typeof currentMap !== 'string' || !Object.hasOwn(rawMaps, currentMap)) throw new Error('현재 맵 오류');
+    const maps: Record<string, MapState> = Object.create(null);
+    for (const [id, raw] of Object.entries(rawMaps) as [string, any][]) {
+      if (!/^[a-z][a-z0-9_-]*$/.test(id) || ['constructor', 'prototype', '__proto__'].includes(id)
+        || !raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('맵 데이터 오류');
+      const rawBuildings = raw.buildings === undefined ? INITIAL_BUILDINGS : raw.buildings;
+      if (!Array.isArray(rawBuildings)) throw new Error('건물 목록 오류');
+      const buildings: BuildingInstance[] = [];
+      for (const b of rawBuildings) {
+        if (!b || typeof b.type !== 'string' || !Object.hasOwn(BUILDING_DEFS, b.type)
+          || !Number.isSafeInteger(b.tx) || !Number.isSafeInteger(b.ty)) throw new Error('건물 오류');
+        const def = BUILDING_DEFS[b.type];
+        for (let y = b.ty; y < b.ty + def.h; y++) for (let x = b.tx; x < b.tx + def.w; x++) {
+          if (![0, 3].includes(tileAt(x, y) as number) || isBuildingTile(buildings, x, y)) throw new Error('건물 위치 오류');
+        }
+        buildings.push({ type: b.type, tx: b.tx, ty: b.ty });
+      }
+      const field = new FarmField();
+      field.load(raw.field);
+      for (const [key] of field.entries()) {
+        const [col, row] = key.split(',').map(Number);
+        if (tileAt(col, row) !== 0) throw new Error('경작할 수 없는 좌표');
+        if (isBuildingTile(buildings, col, row)) throw new Error('저장된 밭과 집 위치가 겹칩니다');
+      }
+      // Old saves keep their cultivated tiles: omit generated trees on those tiles.
+      const props = raw.props === undefined
+        ? createInitialProps(buildings).filter(p => !field.get(p.tx, p.ty))
+        : loadProps(raw.props, buildings);
+      for (const p of props) if (field.get(p.tx, p.ty)) throw new Error('나무와 밭이 겹칩니다');
+      const rawChests = raw.chests ?? [];
+      if (!Array.isArray(rawChests)) throw new Error('상자 목록 오류');
+      const chests: ChestInstance[] = [];
+      for (const c of rawChests) {
+        if (!c || typeof c.type !== 'string' || !Object.hasOwn(CHEST_DEFS, c.type)
+          || !Number.isSafeInteger(c.tx) || !Number.isSafeInteger(c.ty) || tileAt(c.tx, c.ty) !== 0
+          || isBuildingTile(buildings, c.tx, c.ty) || findPropAt(props, c.tx, c.ty)
+          || field.get(c.tx, c.ty) || chestAt(chests, c.tx, c.ty)) throw new Error('상자 위치 오류');
+        const d = CHEST_DEFS[c.type];
+        if (c.hp !== undefined && (!Number.isSafeInteger(c.hp) || c.hp < 1 || c.hp > d.hp)) throw new Error('상자 체력 오류');
+        const items = parseInventory(c.items);
+        if (d.capacity !== null && Object.keys(items).length > d.capacity) throw new Error('상자 용량 오류');
+        chests.push({ type: c.type, tx: c.tx, ty: c.ty, items, ...(c.hp === undefined ? {} : { hp: c.hp }) });
+      }
+      maps[id] = { field, buildings, props, chests };
     }
-    // Old saves keep their cultivated tiles: omit generated trees on those tiles.
-    const props = data.props === undefined
-      ? createInitialProps(this.buildings).filter(p => !field.get(p.tx, p.ty))
-      : loadProps(data.props, this.buildings);
-    for (const p of props) if (field.get(p.tx, p.ty)) throw new Error('나무와 밭이 겹칩니다');
-    const rawChests = data.chests ?? [];
-    if (!Array.isArray(rawChests)) throw new Error('상자 목록 오류');
-    const chests: ChestInstance[] = [];
-    for (const c of rawChests) {
-      if (!c || typeof c.type !== 'string' || !Object.hasOwn(CHEST_DEFS, c.type)
-        || !Number.isSafeInteger(c.tx) || !Number.isSafeInteger(c.ty) || tileAt(c.tx, c.ty) !== 0
-        || isBuildingTile(this.buildings, c.tx, c.ty) || findPropAt(props, c.tx, c.ty)
-        || field.get(c.tx, c.ty) || chestAt(chests, c.tx, c.ty)) throw new Error('상자 위치 오류');
-      const d = CHEST_DEFS[c.type];
-      if (c.hp !== undefined && (!Number.isSafeInteger(c.hp) || c.hp < 1 || c.hp > d.hp)) throw new Error('상자 체력 오류');
-      const items = parseInventory(c.items);
-      if (d.capacity !== null && Object.keys(items).length > d.capacity) throw new Error('상자 용량 오류');
-      chests.push({ type: c.type, tx: c.tx, ty: c.ty, items, ...(c.hp === undefined ? {} : { hp: c.hp }) });
-    }
-    this.chests = chests;
-    this.props = props;
+    this.maps = maps;
+    this.currentMap = currentMap;
     this.day = data.day;
     this.lastWitheredCount = 0;
     this.minutes = minutes;
@@ -179,7 +222,6 @@ export class GameState {
     this.tomorrowWeather = tomorrowWeather;
     this.inventory = inventory;
     this.selectedSeed = data.selectedSeed;
-    this.field = field;
     if (this.weather === 'rain') this.field.waterAll();
     this.ensureSeedSelected();
   }

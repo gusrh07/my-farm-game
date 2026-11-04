@@ -1,4 +1,4 @@
-﻿import { readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import ts from 'typescript';
@@ -13,6 +13,12 @@ for (const name of ['lighting', 'crops', 'fish', 'chests', 'items', 'recipes', '
 const { GameState } = await import(urls.state);
 const { buySeed, sellAllCrops, sellOneCrop } = await import(urls.shop);
 const { CROPS } = await import(urls.crops);
+
+// Recreate the old flat v1 format for existing migration/error tests.
+function legacySave(serialized) {
+  const { maps, currentMap, ...data } = JSON.parse(serialized);
+  return { ...data, version: 1, ...maps.farm };
+}
 
 test('시간대 조명 키프레임·보간·범위 제한', async () => {
   const { lightAt, LIGHT_KEYS } = await import(urls.lighting);
@@ -169,7 +175,7 @@ test('오늘·내일 날씨 저장 유지, 로드는 추첨하지 않음, 구버
   restored.load(saved);
   restored.load(saved);
   assert.equal(restored.serialize(), saved);
-  const legacy = JSON.parse(saved);
+  const legacy = legacySave(saved);
   delete legacy.weather;
   delete legacy.tomorrowWeather;
   restored.load(JSON.stringify(legacy));
@@ -230,7 +236,7 @@ test('수동·자정 취침 회복, 저장 복원·구버전 기본값·손상 �
   restored.load(forcedSave);
   assert.equal(restored.energy, 70);
   assert.equal(restored.minutes, 360);
-  const legacy = JSON.parse(saved);
+  const legacy = legacySave(saved);
   delete legacy.energy;
   state.load(JSON.stringify(legacy));
   assert.equal(state.energy, 100);
@@ -281,7 +287,7 @@ test('로드와 수동 취침은 이전 프레임 누적 시간을 초기화', (
 
 test('기존 60초 하루 저장은 자원과 밭을 유지하고 06:00에 재개', () => {
   const state = new GameState();
-  const legacy = JSON.parse(state.serialize());
+  const legacy = legacySave(state.serialize());
   delete legacy.minutes;
   legacy.dayElapsedMs = 45000;
   legacy.day = 5;
@@ -337,7 +343,7 @@ test('손상된 저장 데이터는 현재 상태를 일부라도 덮어쓰지 �
     { field: [['1,2', { tilled: true, watered: false }], ['1,2', { tilled: true, watered: false }]] },
   ];
   for (const change of changes) {
-    assert.throws(() => state.load(JSON.stringify({ ...JSON.parse(before), ...change })));
+    assert.throws(() => state.load(JSON.stringify({ ...legacySave(before), ...change })));
     assert.equal(state.serialize(), before);
   }
   assert.throws(() => state.load('{invalid'));
@@ -478,7 +484,7 @@ test('GameState 직렬화에는 날짜·타이머·돈·인벤토리·밭이 포
   assert.equal(saved.minutes, 720);
   assert.equal(saved.gold, 100);
   assert.equal(saved.inventory['seed:turnip'], 4);
-  assert.equal(saved.field[0][1].crop.id, 'turnip');
+  assert.equal(saved.maps.farm.field[0][1].crop.id, 'turnip');
 });
 
 test('집 벽은 차단, 문은 통과 가능하며 건물 전체는 경작 불가', async () => {
@@ -558,8 +564,8 @@ test('나무 저장 복원, 옛 저장의 밭 보호, 손상된 나무 로드 �
   const saved = state.serialize();
   state.props = [];
   state.load(saved);
-  assert.deepEqual(state.props, JSON.parse(saved).props);
-  const legacy = JSON.parse(saved);
+  assert.deepEqual(state.props, JSON.parse(saved).maps.farm.props);
+  const legacy = legacySave(saved);
   delete legacy.props;
   legacy.field.push([`${p.tx},${p.ty}`, { tilled: true, watered: false }]);
   state.load(JSON.stringify(legacy));
@@ -567,7 +573,7 @@ test('나무 저장 복원, 옛 저장의 밭 보호, 손상된 나무 로드 �
   assert.equal(state.props.some(q => q.tx === p.tx && q.ty === p.ty), false);
   const before = state.serialize();
   for (const props of [null, [{ type: 'unknown', tx: 2, ty: 2 }], [{ type: 'tree', tx: 5, ty: 8 }], [p,p]]) {
-    assert.throws(() => state.load(JSON.stringify({ ...JSON.parse(saved), props })));
+    assert.throws(() => state.load(JSON.stringify({ ...legacySave(saved), props })));
     assert.equal(state.serialize(), before);
   }
 });
@@ -691,7 +697,7 @@ test('상자 전송 수량 검증·부분 파괴 저장·구버전 호환·잘�
   state.energy=3;assert.notEqual(state.hitChest(c),null);assert.equal(c.hp,undefined);
   state.energy=100;state.hitChest(c);assert.equal(c.hp,2);
   state.load(state.serialize());assert.equal(state.chests[0].hp,2);
-  const saved=JSON.parse(state.serialize()), before=state.serialize();
+  const saved=legacySave(state.serialize()), before=state.serialize();
   const invalid=[{...saved.chests[0],hp:0},{...saved.chests[0],tx:32,ty:3},{...saved.chests[0],items:{'material:fake':1}},{...saved.chests[0],items:{'seed:turnip':-1}}];
   for(const bad of invalid) {
     assert.throws(()=>state.load(JSON.stringify({...saved,chests:[bad]})));
@@ -778,5 +784,73 @@ test('취침 후 저장은 다음 날·회복 에너지·시든 작물 상태를
     assert.equal(restored.day,29);assert.equal(restored.minutes,360);
     assert.equal(restored.energy,forced?70:100);
     assert.equal(restored.field.get(5,9).crop,undefined);
+  }
+});
+
+test('v1 고정 저장 샘플은 farm으로 이관되고 v2 재저장 후 모든 진행이 유지', async () => {
+  const legacy = JSON.parse(readFileSync(new URL('./fixtures/legacy-save-v1.json', import.meta.url), 'utf8'));
+  const state = new GameState();
+  state.load(JSON.stringify(legacy));
+  const saved = JSON.parse(state.serialize());
+  assert.equal(saved.version, 2);
+  assert.equal(saved.currentMap, 'farm');
+  assert.equal('field' in saved, false);
+  for (const key of ['field', 'props', 'chests']) assert.deepEqual(saved.maps.farm[key], legacy[key]);
+  const { INITIAL_BUILDINGS } = await import(urls.buildings);
+  assert.deepEqual(saved.maps.farm.buildings, INITIAL_BUILDINGS);
+  for (const key of ['day','minutes','energy','weather','tomorrowWeather','gold','inventory','selectedSeed']) {
+    assert.deepEqual(saved[key], legacy[key]);
+  }
+  const restored = new GameState();
+  restored.load(state.serialize());
+  assert.equal(restored.serialize(), state.serialize());
+  legacy.buildings = [];
+  restored.load(JSON.stringify(legacy));
+  assert.deepEqual(restored.buildings, []);
+});
+
+test('현재 맵 접근자는 해당 데이터만 변경하고 모든 맵을 독립 저장·복원', () => {
+  const state = new GameState();
+  assert.deepEqual(Object.keys(state.maps), ['farm']);
+  const other = new GameState().map; // Test-only map; no second map is shipped.
+  state.maps.test_map = other;
+  state.currentMap = 'test_map';
+  state.props = [];
+  state.buildings = [];
+  state.field.till(1, 2, true);
+  state.chests.push({ type:'wood_chest', tx:28, ty:20, items:{'material:wood':3} });
+  assert.equal(state.map, other);
+  assert.equal(state.maps.farm.field.entries().length, 0);
+  assert.ok(state.maps.farm.props.length > 0);
+  assert.equal(state.maps.farm.chests.length, 0);
+  assert.equal(state.maps.farm.buildings.length, 1);
+  const restored = new GameState();
+  restored.load(state.serialize());
+  assert.equal(restored.currentMap, 'test_map');
+  assert.equal(restored.serialize(), state.serialize());
+  restored.chests[0].items['material:wood'] = 1;
+  assert.equal(state.chests[0].items['material:wood'], 3);
+  restored.currentMap = 'farm';
+  assert.equal(restored.field.entries().length, 0);
+  assert.equal(restored.chests.length, 0);
+});
+
+test('손상된 맵·현재 맵·건물·비활성 맵 데이터도 전체 로드를 원자적으로 거부', () => {
+  const state = new GameState();
+  const before = state.serialize();
+  const saved = JSON.parse(before);
+  const badMaps = [null, [], {}, {farm:null}, {farm:{...saved.maps.farm, buildings:null}},
+    {farm:{...saved.maps.farm, buildings:[{type:'unknown',tx:32,ty:3}]}},
+    {farm:{...saved.maps.farm, buildings:[{type:'house',tx:49,ty:35}]}},
+    {farm:{...saved.maps.farm, buildings:[...saved.maps.farm.buildings,...saved.maps.farm.buildings]}},
+    {farm:{...saved.maps.farm, field:[['0,0',{tilled:true,watered:false}]]}},
+    {farm:saved.maps.farm, broken:{...saved.maps.farm,chests:[{type:'unknown',tx:1,ty:2,items:{}}]}}];
+  for (const maps of badMaps) {
+    assert.throws(() => state.load(JSON.stringify({...saved, maps})));
+    assert.equal(state.serialize(), before);
+  }
+  for (const currentMap of ['missing', '__proto__', 0]) {
+    assert.throws(() => state.load(JSON.stringify({...saved,currentMap})));
+    assert.equal(state.serialize(), before);
   }
 });

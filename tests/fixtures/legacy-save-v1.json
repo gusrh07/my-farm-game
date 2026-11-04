@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "day": 12,
+  "minutes": 1120,
+  "energy": 63,
+  "weather": "sunny",
+  "tomorrowWeather": "rain",
+  "gold": 432,
+  "inventory": { "seed:potato": 2, "material:wood": 7, "fish:carp": 1 },
+  "selectedSeed": "potato",
+  "field": [["1,2", { "tilled": true, "watered": true, "crop": { "id": "potato", "daysGrown": 2 } }]],
+  "props": [{ "type": "sapling", "tx": 30, "ty": 20, "age": 2 }],
+  "chests": [{ "type": "wood_chest", "tx": 28, "ty": 20, "hp": 2, "items": { "material:wood": 4 } }]
+}
